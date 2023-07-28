@@ -1,18 +1,22 @@
+import { CookieShow } from '@/components/CookieShow';
 import { queryClient } from '@/utils';
 import { QueryClientProvider } from '@tanstack/react-query';
-import React from 'react';
 import { createRoot } from 'react-dom/client';
 import browser from 'webextension-polyfill';
+import './app.scss';
+import { StrictMode } from 'react';
 
-browser.tabs.query({ active: true, currentWindow: true }).then(() => {
+browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
   const root = document.getElementById('root');
+  const tab = tabs[0];
+
   if (root) {
     createRoot(root).render(
-      <React.StrictMode>
+      <StrictMode>
         <QueryClientProvider client={queryClient}>
-          <div>Popup</div>
+          <CookieShow popup url={tab.url} />
         </QueryClientProvider>
-      </React.StrictMode>,
+      </StrictMode>,
     );
   }
 });

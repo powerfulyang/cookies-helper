@@ -1,11 +1,16 @@
 {
   "$schema": "https://json.schemastore.org/swcrc",
-  "minify": true,
+  "minify": false,
   "jsc": {
     "target": "esnext",
     "parser": {
       "syntax": "typescript",
       "tsx": true
+    },
+    "transform": {
+      "react": {
+        "runtime": "automatic"
+      }
     },
     "experimental": {
       "plugins": [

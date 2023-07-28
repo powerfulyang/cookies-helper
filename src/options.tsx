@@ -1,32 +1,20 @@
+import { CookieShow } from '@/components/CookieShow';
 import { queryClient } from '@/utils';
 import { QueryClientProvider } from '@tanstack/react-query';
-import React from 'react';
 import { createRoot } from 'react-dom/client';
 import browser from 'webextension-polyfill';
+import './app.scss';
+import { StrictMode } from 'react';
 
 browser.tabs.query({ active: true, currentWindow: true }).then(() => {
   const root = document.getElementById('options');
   if (root) {
     createRoot(root).render(
-      <React.StrictMode>
+      <StrictMode>
         <QueryClientProvider client={queryClient}>
-          <div>Options</div>
+          <CookieShow />
         </QueryClientProvider>
-      </React.StrictMode>,
+      </StrictMode>,
     );
   }
 });
-
-await browser.cookies.set({
-  domain: 'localhost',
-  path: '/',
-  httpOnly: true,
-  name: 'test',
-  url: 'http://localhost:8080',
-  value: 'test',
-});
-
-const res = await browser.cookies.getAll({
-  domain: 'localhost',
-});
-console.log(res);
