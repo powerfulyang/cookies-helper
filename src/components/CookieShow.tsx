@@ -110,26 +110,30 @@ export const CookieShow: FC<Props> = ({ url = '', popup }) => {
   }, [data]);
 
   return (
-    <div className={cn('p-4')}>
-      <Input
-        value={filter}
-        onChange={(e) => {
-          return setFilter(e.target.value);
-        }}
-        className="mb-4"
-        placeholder="doamin or url"
-      />
-      <div className="mb-4 flex items-center space-x-2">
-        <Switch
-          id="onlySelf"
-          checked={showAll}
-          onCheckedChange={(_checked) => {
-            setShowAll(_checked);
+    <div>
+      <div className="sticky top-0 bg-white p-4 shadow">
+        <Input
+          value={filter}
+          onChange={(e) => {
+            return setFilter(e.target.value);
           }}
+          className="mb-4"
+          placeholder="doamin or url"
         />
-        <Label htmlFor="onlySelf">是否显示全部子域名 Cookie</Label>
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="onlySelf"
+            checked={showAll}
+            onCheckedChange={(_checked) => {
+              setShowAll(_checked);
+            }}
+          />
+          <Label htmlFor="onlySelf">是否显示全部子域名 Cookie</Label>
+        </div>
       </div>
-      <DataTable columns={columns} data={data || []} popup={popup} />
+      <div className="p-4">
+        <DataTable columns={columns} data={data || []} popup={popup} />
+      </div>
       <Toaster />
     </div>
   );

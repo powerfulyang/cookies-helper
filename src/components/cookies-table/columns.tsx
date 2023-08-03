@@ -1,7 +1,6 @@
 'use client';
 
 import { FavoriteCookie } from '@/components/cookies-table/favorite-cookie';
-import { WidthDetect } from '@/components/cookies-table/WidthDetect';
 import {
   Select,
   SelectContent,
@@ -22,13 +21,7 @@ type Cookie = Cookies.Cookie;
 export const columns: ColumnDef<Cookie>[] = [
   {
     accessorKey: 'domain',
-    header: () => {
-      return (
-        <WidthDetect index={0}>
-          <div>Domain</div>
-        </WidthDetect>
-      );
-    },
+    header: 'Domain',
     cell: ({ row }) => {
       return <FavoriteCookie cookie={row.original} />;
     },
@@ -36,28 +29,18 @@ export const columns: ColumnDef<Cookie>[] = [
   {
     accessorKey: 'name',
     header: () => {
-      return (
-        <WidthDetect index={1}>
-          <div>Name</div>
-        </WidthDetect>
-      );
+      return 'Name';
     },
     cell: ({ row }) => {
-      return (
-        <WidthDetect index={1}>
-          <div className="max-w-[150px] truncate text-center">{row.getValue('name')}</div>
-        </WidthDetect>
-      );
+      return <div className="max-w-[150px] truncate text-center">{row.getValue('name')}</div>;
     },
   },
   {
     accessorKey: 'value',
-    header: () => {
-      return <div className="w-[250px]">Value</div>;
-    },
+    header: 'Value',
     cell: ({ row }) => {
       return (
-        <div className="flex w-[250px] items-center justify-center space-x-1">
+        <div className="flex max-w-[250px] items-center justify-center space-x-1">
           <div className="flex-1 truncate text-right">{row.getValue('value')}</div>
           <Copy
             onClick={async () => {
@@ -82,9 +65,7 @@ export const columns: ColumnDef<Cookie>[] = [
   },
   {
     accessorKey: 'expirationDate',
-    header: () => {
-      return <div className="w-[130px]">Expiration Date</div>;
-    },
+    header: 'Expiration Date',
     cell: ({ row }) => {
       return (
         <div className="w-[130px] whitespace-pre text-center">
@@ -97,45 +78,25 @@ export const columns: ColumnDef<Cookie>[] = [
   },
   {
     accessorKey: 'path',
-    header: () => {
-      return (
-        <WidthDetect index={2}>
-          <div className="w-full">Path</div>
-        </WidthDetect>
-      );
-    },
+    header: 'Path',
     cell: ({ row }) => {
-      return (
-        <WidthDetect index={2}>
-          <div className="truncate text-center">{row.getValue('path')}</div>
-        </WidthDetect>
-      );
+      return <div className="truncate text-center">{row.getValue('path')}</div>;
     },
   },
   {
     accessorKey: 'httpOnly',
-    header: () => {
-      return (
-        <WidthDetect index={3}>
-          <div>Http Only</div>
-        </WidthDetect>
-      );
-    },
+    header: 'Http Only',
     cell: ({ row }) => {
       return (
-        <WidthDetect index={3}>
-          <div className="flex justify-center">
-            <Switch checked={row.getValue('httpOnly')} />
-          </div>
-        </WidthDetect>
+        <div className="flex justify-center">
+          <Switch checked={row.getValue('httpOnly')} />
+        </div>
       );
     },
   },
   {
     accessorKey: 'sameSite',
-    header: () => {
-      return <div className="w-[180px]">Same Site</div>;
-    },
+    header: 'Same Site',
     cell: ({ row }) => {
       return (
         <Select value={row.getValue('sameSite')}>
@@ -154,20 +115,12 @@ export const columns: ColumnDef<Cookie>[] = [
   },
   {
     accessorKey: 'secure',
-    header: () => {
-      return (
-        <WidthDetect index={4}>
-          <div>Secure</div>
-        </WidthDetect>
-      );
-    },
+    header: 'Secure',
     cell: ({ row }) => {
       return (
-        <WidthDetect index={4}>
-          <div className="flex justify-center">
-            <Switch checked={row.getValue('secure')} />
-          </div>
-        </WidthDetect>
+        <div className="flex justify-center">
+          <Switch checked={row.getValue('secure')} />
+        </div>
       );
     },
   },
