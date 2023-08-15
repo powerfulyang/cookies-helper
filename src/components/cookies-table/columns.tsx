@@ -14,7 +14,9 @@ import { copyToClipBoard } from '@powerfulyang/utils';
 import type { ColumnDef } from '@tanstack/react-table';
 import dayjs from 'dayjs';
 import { Copy, Edit, Smile, Trash } from 'lucide-react';
+import browser from 'webextension-polyfill';
 import type { Cookies } from 'webextension-polyfill';
+import { serialize } from 'cookie';
 
 type Cookie = Cookies.Cookie;
 
@@ -39,17 +41,39 @@ export const columns: ColumnDef<Cookie>[] = [
     accessorKey: 'value',
     header: 'Value',
     cell: ({ row }) => {
+      const generateUrl = (_cookie: Cookie) => {
+        return `${_cookie.secure ? 'https' : 'http'}://${_cookie.domain}${_cookie.path}`;
+      };
       return (
         <div className="flex max-w-[250px] items-center justify-center space-x-1">
           <div className="flex-1 truncate text-right">{row.getValue('value')}</div>
           <Copy
             onClick={async () => {
-              await copyToClipBoard(row.getValue('value'));
+              const { name, value, ...rest } = row.original;
+              const convertSameSite = (sameSite: Cookies.SameSiteStatus) => {
+                switch (sameSite) {
+                  case 'lax':
+                    return 'lax';
+                  case 'strict':
+                    return 'strict';
+                  case 'no_restriction':
+                    return 'none';
+                  default:
+                    return undefined;
+                }
+              };
+              const copyValue = serialize(name, value, {
+                ...rest,
+                sameSite: convertSameSite(rest.sameSite),
+                expires: rest.expirationDate ? new Date(rest.expirationDate * 1000) : undefined,
+              });
+              await copyToClipBoard(copyValue);
               toast({
                 description: (
                   <div className="flex items-center justify-center space-x-2">
                     <Smile color="#4ecd4c" />
                     <div className="font-medium">Copied!</div>
+                    <div className="text-blue-400">{copyValue}</div>
                   </div>
                 ),
               });
@@ -57,8 +81,17 @@ export const columns: ColumnDef<Cookie>[] = [
             size={15}
             className="cursor-pointer"
           />
-          <Edit size={15} className="cursor-pointer" />
-          <Trash size={15} className="cursor-pointer" />
+          <Edit size={15} className="hidden cursor-pointer" />
+          <Trash
+            onClick={async () => {
+              await browser.cookies.remove({
+                url: generateUrl(row.original),
+                name: row.original.name,
+              });
+            }}
+            size={15}
+            className="cursor-pointer"
+          />
         </div>
       );
     },

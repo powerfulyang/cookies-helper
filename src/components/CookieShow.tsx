@@ -1,22 +1,57 @@
-import { columns } from '@/components/cookies-table/columns';
+/*
+  eslint-disable react/no-unstable-nested-components
+ */
 import { DataTable } from '@/components/cookies-table/data-table';
-import { FavoriteCookieAtom } from '@/components/cookies-table/favorite-cookie';
-import { ColumnWidthAtom } from '@/components/cookies-table/WidthDetect';
+import { FavoriteCookie, FavoriteCookieAtom } from '@/components/cookies-table/favorite-cookie';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Toaster } from '@/components/ui/toaster';
+import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
+import { copyToClipBoard } from '@powerfulyang/utils';
 import { useQuery } from '@tanstack/react-query';
+import type { ColumnDef } from '@tanstack/react-table';
+import { serialize } from 'cookie';
+import dayjs from 'dayjs';
 import { getDefaultStore } from 'jotai';
+import { Copy, Edit, RefreshCcw, Smile, Trash } from 'lucide-react';
 import psl from 'psl';
 import type { FC } from 'react';
-import { useEffect, useState } from 'react';
-import browser from 'webextension-polyfill';
+import { useCallback, useMemo, useState } from 'react';
+import browser, { Cookies } from 'webextension-polyfill';
+
+import Cookie = Cookies.Cookie;
 
 type Props = {
   url?: string;
   popup?: boolean;
+};
+
+const generateUrl = (_cookie: Cookie) => {
+  const { domain, secure, path } = _cookie;
+  const _domain = domain.startsWith('.') ? domain.slice(1) : domain;
+  return `${secure ? 'https' : 'http'}://${_domain}${path}`;
+};
+
+const convertSameSite = (sameSite: Cookies.SameSiteStatus) => {
+  switch (sameSite) {
+    case 'lax':
+      return 'lax';
+    case 'strict':
+      return 'strict';
+    case 'no_restriction':
+      return 'none';
+    default:
+      return undefined;
+  }
 };
 
 export const CookieShow: FC<Props> = ({ url = '', popup }) => {
@@ -41,7 +76,7 @@ export const CookieShow: FC<Props> = ({ url = '', popup }) => {
     },
   });
 
-  const { data } = useQuery({
+  const { data, refetch, isFetching } = useQuery({
     queryKey: ['cookies', showAll, filter, favorites],
     keepPreviousData: true,
     queryFn: async () => {
@@ -105,9 +140,171 @@ export const CookieShow: FC<Props> = ({ url = '', popup }) => {
     },
   });
 
-  useEffect(() => {
-    getDefaultStore().set(ColumnWidthAtom, []);
-  }, [data]);
+  const updateCookie = useCallback(
+    async (cookie: Cookie, update: Partial<Cookie>) => {
+      const { hostOnly, session, ...rest } = cookie;
+      const _url = generateUrl(cookie);
+      const _domain = new URL(_url).hostname;
+      await browser.cookies.set({
+        ...rest,
+        domain: hostOnly ? undefined : _domain,
+        url: _url,
+        ...update,
+      });
+      return refetch();
+    },
+    [refetch],
+  );
+
+  const columns: ColumnDef<Cookie>[] = useMemo(() => {
+    return [
+      {
+        accessorKey: 'domain',
+        header: 'Domain',
+        cell: ({ row }) => {
+          return <FavoriteCookie cookie={row.original} />;
+        },
+      },
+      {
+        accessorKey: 'name',
+        header: () => {
+          return 'Name';
+        },
+        cell: ({ row }) => {
+          return <div className="max-w-[150px] truncate text-center">{row.getValue('name')}</div>;
+        },
+      },
+      {
+        accessorKey: 'value',
+        header: 'Value',
+        cell: ({ row }) => {
+          return (
+            <div className="flex max-w-[250px] items-center justify-center space-x-1">
+              <div className="flex-1 truncate text-right">{row.getValue('value')}</div>
+              <Copy
+                onClick={async () => {
+                  const { name, value, ...rest } = row.original;
+                  const copyValue = serialize(name, value, {
+                    ...rest,
+                    sameSite: convertSameSite(rest.sameSite),
+                    expires: rest.expirationDate ? new Date(rest.expirationDate * 1000) : undefined,
+                  });
+                  await copyToClipBoard(copyValue);
+                  toast({
+                    description: (
+                      <div className="flex items-center justify-center space-x-2">
+                        <Smile color="#4ecd4c" />
+                        <div className="font-medium">Copied!</div>
+                        <div className="text-blue-400">{copyValue}</div>
+                      </div>
+                    ),
+                  });
+                }}
+                size={15}
+                className="cursor-pointer"
+              />
+              <Edit size={15} className="hidden cursor-pointer" />
+              <Trash
+                onClick={async () => {
+                  await browser.cookies.remove({
+                    url: generateUrl(row.original),
+                    name: row.original.name,
+                  });
+                  return refetch();
+                }}
+                size={15}
+                className="cursor-pointer"
+              />
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'expirationDate',
+        header: 'Expiration Date',
+        cell: ({ row }) => {
+          return (
+            <div className="w-[130px] whitespace-pre text-center">
+              {row.original.session
+                ? 'Session'
+                : dayjs(row.getValue<number>('expirationDate') * 1000).format(
+                    'YYYY-MM-DD HH:mm:ss',
+                  )}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'path',
+        header: 'Path',
+        cell: ({ row }) => {
+          return <div className="truncate text-center">{row.getValue('path')}</div>;
+        },
+      },
+      {
+        accessorKey: 'httpOnly',
+        header: 'Http Only',
+        cell: ({ row }) => {
+          return (
+            <div className="flex justify-center">
+              <Switch
+                onCheckedChange={(checked) => {
+                  return updateCookie(row.original, { httpOnly: checked });
+                }}
+                checked={row.getValue('httpOnly')}
+              />
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'sameSite',
+        header: 'Same Site',
+        cell: ({ row }) => {
+          return (
+            <Select
+              onValueChange={(value) => {
+                let sameSite: Cookies.SameSiteStatus | undefined = value as Cookies.SameSiteStatus;
+                if (value === 'unspecified') {
+                  sameSite = undefined;
+                }
+                return updateCookie(row.original, { sameSite });
+              }}
+              value={row.getValue('sameSite')}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Same Site" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="strict">Strict</SelectItem>
+                <SelectItem value="lax">Lax</SelectItem>
+                {row.original.secure && (
+                  <SelectItem value="no_restriction">no_restriction</SelectItem>
+                )}
+                <SelectItem value="unspecified">unspecified</SelectItem>
+              </SelectContent>
+            </Select>
+          );
+        },
+      },
+      {
+        accessorKey: 'secure',
+        header: 'Secure',
+        cell: ({ row }) => {
+          return (
+            <div className="flex justify-center">
+              <Switch
+                onCheckedChange={(checked) => {
+                  return updateCookie(row.original, { secure: checked });
+                }}
+                checked={row.getValue('secure')}
+              />
+            </div>
+          );
+        },
+      },
+    ];
+  }, [refetch, updateCookie]);
 
   return (
     <div>
@@ -129,6 +326,15 @@ export const CookieShow: FC<Props> = ({ url = '', popup }) => {
             }}
           />
           <Label htmlFor="onlySelf">是否显示全部子域名 Cookie</Label>
+          <RefreshCcw
+            size={15}
+            className={cn('!ml-auto !mr-2 cursor-pointer text-gray-600', {
+              'animate-spin': isFetching,
+            })}
+            onClick={() => {
+              return refetch();
+            }}
+          />
         </div>
       </div>
       <div className="p-4">
