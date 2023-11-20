@@ -15,11 +15,11 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Toaster } from '@/components/ui/toaster';
 import { toast } from '@/components/ui/use-toast';
+import { convertCookiesToNetscapeFormat } from '@/lib/cookieUtils';
 import { cn } from '@/lib/utils';
 import { copyToClipBoard } from '@powerfulyang/utils';
 import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { serialize } from 'cookie';
 import dayjs from 'dayjs';
 import { getDefaultStore } from 'jotai';
 import { Copy, Edit, RefreshCcw, Smile, Trash } from 'lucide-react';
@@ -27,7 +27,6 @@ import psl from 'psl';
 import type { FC } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import browser, { Cookies } from 'webextension-polyfill';
-
 import Cookie = Cookies.Cookie;
 
 type Props = {
@@ -39,19 +38,6 @@ const generateUrl = (_cookie: Cookie) => {
   const { domain, secure, path } = _cookie;
   const _domain = domain.startsWith('.') ? domain.slice(1) : domain;
   return `${secure ? 'https' : 'http'}://${_domain}${path}`;
-};
-
-const convertSameSite = (sameSite: Cookies.SameSiteStatus) => {
-  switch (sameSite) {
-    case 'lax':
-      return 'lax';
-    case 'strict':
-      return 'strict';
-    case 'no_restriction':
-      return 'none';
-    default:
-      return undefined;
-  }
 };
 
 export const CookieShow: FC<Props> = ({ url = '', popup }) => {
@@ -171,7 +157,28 @@ export const CookieShow: FC<Props> = ({ url = '', popup }) => {
           return 'Name';
         },
         cell: ({ row }) => {
-          return <div className="max-w-[150px] truncate text-center">{row.getValue('name')}</div>;
+          return (
+            <div className="flex items-center gap-2">
+              <div className="max-w-[150px] truncate text-center">{row.getValue('name')}</div>
+              <Copy
+                onClick={async () => {
+                  const { name } = row.original;
+                  await copyToClipBoard(name);
+                  toast({
+                    description: (
+                      <div className="flex items-center justify-center space-x-2">
+                        <Smile color="#4ecd4c" />
+                        <div className="font-medium">Copied!</div>
+                        <div className="text-blue-400">{name}</div>
+                      </div>
+                    ),
+                  });
+                }}
+                size={15}
+                className="cursor-pointer"
+              />
+            </div>
+          );
         },
       },
       {
@@ -183,19 +190,14 @@ export const CookieShow: FC<Props> = ({ url = '', popup }) => {
               <div className="flex-1 truncate text-right">{row.getValue('value')}</div>
               <Copy
                 onClick={async () => {
-                  const { name, value, ...rest } = row.original;
-                  const copyValue = serialize(name, value, {
-                    ...rest,
-                    sameSite: convertSameSite(rest.sameSite),
-                    expires: rest.expirationDate ? new Date(rest.expirationDate * 1000) : undefined,
-                  });
-                  await copyToClipBoard(copyValue);
+                  const { value } = row.original;
+                  await copyToClipBoard(value);
                   toast({
                     description: (
                       <div className="flex items-center justify-center space-x-2">
                         <Smile color="#4ecd4c" />
                         <div className="font-medium">Copied!</div>
-                        <div className="text-blue-400">{copyValue}</div>
+                        <div className="text-blue-400">{value}</div>
                       </div>
                     ),
                   });
@@ -326,15 +328,35 @@ export const CookieShow: FC<Props> = ({ url = '', popup }) => {
             }}
           />
           <Label htmlFor="onlySelf">是否显示全部子域名 Cookie</Label>
-          <RefreshCcw
-            size={15}
-            className={cn('!ml-auto !mr-2 cursor-pointer text-gray-600', {
-              'animate-spin': isFetching,
-            })}
-            onClick={() => {
-              return refetch();
-            }}
-          />
+          <div className="!ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              className="cursor-pointer text-blue-400 hover:text-blue-500"
+              onClick={async () => {
+                const cookie = convertCookiesToNetscapeFormat(data || []);
+                await copyToClipBoard(cookie);
+                toast({
+                  description: (
+                    <div className="flex items-center justify-center space-x-2">
+                      <Smile color="#4ecd4c" />
+                      <div className="font-medium">Copied!</div>
+                    </div>
+                  ),
+                });
+              }}
+            >
+              复制为 Netscape 格式
+            </button>
+            <RefreshCcw
+              size={15}
+              className={cn('!mr-2 cursor-pointer text-gray-600', {
+                'animate-spin': isFetching,
+              })}
+              onClick={() => {
+                return refetch();
+              }}
+            />
+          </div>
         </div>
       </div>
       <div className="p-4">
